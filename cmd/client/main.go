@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/whiterthanwhite/go_openweathermap_mgr/internal/currentweather"
+	sp "github.com/whiterthanwhite/go_openweathermap_mgr/internal/signal_processing"
 )
 
 var (
@@ -19,14 +22,34 @@ func main() {
 		panic("api key was not specified!")
 	}
 	flag.Parse()
-
 	c := &currentweather.CurrentWeatherData{
 		APIKey: key,
 	}
-	cr, err := c.GetByGeoCoordinates(float32(*lat), float32(*lon))
-	if err != nil {
-		panic(err.Error())
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go sp.Processing(cancel)
+	go requestProcessing(ctx, c)
+
+	<-ctx.Done()
+	fmt.Println("exit client")
+}
+
+func requestProcessing(parentCtx context.Context, c *currentweather.CurrentWeatherData) {
+	ticker := time.NewTicker(time.Second * 5)
+	for {
+		select {
+		case <-ticker.C:
+			cwr, err := c.GetByGeoCoordinates(float32(*lat), float32(*lon))
+			if err != nil {
+				panic(err.Error())
+			}
+			if err != c.SendDataToServer(cwr) {
+				panic(err.Error())
+			}
+		case <-parentCtx.Done():
+			fmt.Println("stop")
+			ticker.Stop()
+			return
+		}
 	}
-	fmt.Printf("Coordinates info:\ntimezone: %d\nname: %s\ncod: %d\ntemp: %f\n", cr.Timezone, cr.Name,
-		cr.Cod, cr.Main.Temp)
 }

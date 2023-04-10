@@ -1,6 +1,7 @@
 package currentweather
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -19,6 +20,33 @@ type CurrentWeatherData struct {
 
 func (cwd *CurrentWeatherData) GetByGeoCoordinates(lat, lon float32) (*CurrentWeatherResponse, error) {
 	return cwd.doRequest(lat, lon)
+}
+
+func (cwd *CurrentWeatherData) SendDataToServer(cwr *CurrentWeatherResponse) error {
+	urlString, err := url.Parse("http://localhost:8080/currentweather")
+	if err != nil {
+		return nil
+	}
+
+	reqBody := []byte(fmt.Sprintf("Current weather: %f", cwr.Main.Temp))
+	req, err := http.NewRequest(http.MethodGet, urlString.String(), bytes.NewBuffer(reqBody))
+	if err != nil {
+		return err
+	}
+
+	c := &http.Client{}
+	resp, err := c.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return errors.New("store failed!")
+	}
+
+	fmt.Println("store succeed!")
+	return nil
 }
 
 // url := `https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={API key}`
