@@ -28,11 +28,15 @@ func (cwd *CurrentWeatherData) SendDataToServer(cwr *CurrentWeatherResponse) err
 		return nil
 	}
 
-	reqBody := []byte(fmt.Sprintf("Current weather: %f", cwr.Main.Temp))
+	reqBody, err := json.Marshal(cwr)
+	if err != nil {
+		return err
+	}
 	req, err := http.NewRequest(http.MethodGet, urlString.String(), bytes.NewBuffer(reqBody))
 	if err != nil {
 		return err
 	}
+	req.Header.Add("Content-Type", "application/json")
 
 	c := &http.Client{}
 	resp, err := c.Do(req)
@@ -41,8 +45,13 @@ func (cwd *CurrentWeatherData) SendDataToServer(cwr *CurrentWeatherResponse) err
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode == http.StatusUnsupportedMediaType {
+		return errors.New("unsupported media type")
+	}
+
 	if resp.StatusCode != http.StatusOK {
-		return errors.New("store failed!")
+		return fmt.Errorf("actual status: %d; expected status: %d; store failed!",
+			resp.StatusCode, http.StatusOK)
 	}
 
 	fmt.Println("store succeed!")

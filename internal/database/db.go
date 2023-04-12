@@ -5,6 +5,8 @@ import (
 	"os"
 
 	"github.com/jackc/pgx/v5"
+
+	"github.com/whiterthanwhite/go_openweathermap_mgr/internal/currentweather"
 )
 
 type weatherdb struct {
@@ -51,4 +53,28 @@ func (d *weatherdb) CreateNecessaryTables(parentCtx context.Context) error {
 		return err
 	}
 	return nil
+}
+
+func (d *weatherdb) InsertWeatherData(parentCtx context.Context, weather *currentweather.Weather) error {
+	id, err := d.GetLastWeatherId(parentCtx)
+	if err != nil {
+		return err
+	}
+	id++
+	_, err = d.conn.Exec(parentCtx,
+		"INSERT INTO weather VALUES ($1, $2, $3, $4);",
+		&id, weather.Lon, weather.Lat, weather.Temp)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (d *weatherdb) GetLastWeatherId(parentCtx context.Context) (int, error) {
+	id := 0
+	err := d.conn.QueryRow(parentCtx, "SELECT id FROM weather ORDER BY id DESC LIMIT 1;").Scan(&id)
+	if err != nil && err != pgx.ErrNoRows {
+		return 0, err
+	}
+	return id, nil
 }

@@ -21,7 +21,7 @@ func main() {
 	go sp.Processing(cancel)
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/currentweather", serverhandlers.AddWeatherMeasurement())
+	mux.HandleFunc("/currentweather", middleware.CheckHeader(serverhandlers.AddWeatherMeasurement()))
 	s := http.Server{
 		Addr:    ":8080",
 		Handler: &middleware.Logger{Handler: mux, LogWriter: os.Stdout},

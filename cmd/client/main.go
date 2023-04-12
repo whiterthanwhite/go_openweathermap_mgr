@@ -43,7 +43,7 @@ func requestProcessing(parentCtx context.Context, c *currentweather.CurrentWeath
 			if err != nil {
 				panic(err.Error())
 			}
-			if err != c.SendDataToServer(cwr) {
+			if err := c.SendDataToServer(cwr); err != nil {
 				panic(err.Error())
 			}
 		case <-parentCtx.Done():
